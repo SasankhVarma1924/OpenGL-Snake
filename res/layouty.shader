@@ -1,4 +1,4 @@
-#shader vert2
+#shader layouty
 #version 440 core
 
 uniform float y;

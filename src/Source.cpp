@@ -13,7 +13,9 @@
 #include "Buffer.h"
 #include "VertexArrays.h"
 
-glm::vec3 vec(0.0f, 0.0f, 0.0f);
+glm::vec3 head(0.0f, 0.0f, 0.0f);
+
+// stores the snake tail / body values
 std::vector<int> tail;
 int n = 0;
 int Key = GLFW_KEY_D;
@@ -44,7 +46,9 @@ int main()
 	{
 		std::cout << "glew is not initailized" << std::endl;
 	}
-	float points[6][3]
+
+
+	float snakePoints[6][3]
 	{
 		-0.5f, 0.2f,0.0f,    
 		-0.5f, 0.1f,0.0f,
@@ -74,47 +78,49 @@ int main()
 		{0,0.1},{1,0.2},{2,0.3},{3,0.4},{4,0.5},{5,0.6},{6,0.7},{7,0.8}
 	};
 	
+
 	glm::mat4 ran(1.0f),trans(1.0f);
 	ran = glm::translate(ran, glm::vec3(0.0f, 0.0f, 0.0f));
-	
 
+	Shader layoutx("layoutx", "res/layoutx.shader", "#shader layoutx", "#shader frag2");
+	Shader layouty("layouty", "res/layouty.shader", "#shader layouty", "#shader frag2");
 
+	// Everythig related to generation of snake
+	Shader snake("snake", "res/snake.shader", "#shader snakev", "#shader snakef");
+	snake.Bind();
+	Buffer snakeBuffer(GL_ARRAY_BUFFER, sizeof(snakePoints), snakePoints);
+	snakeBuffer.Bind();
+	VertexArrays snakeVA(sizeof(float) * 3);
+	snakeVA.DataOrder(0, 3, 0);
+	snakeVA.UnBind();
+	snakeBuffer.UnBind();
+	snake.UnBind();
+
+	// Everything related to generation of food or ball
 	Shader ball("ball", "res/snake.shader", "#shader ballv", "#shader ballf");
-	Shader s2("s2", "res/layoutx.shader", "#shader vert2", "#shader frag2");
-	Shader s3("s3", "res/layouty.shader", "#shader vert2", "#shader frag2");
-	Shader s4("s4", "res/snake.shader", "#shader snakev", "#shader snakef");
-	s4.Bind();
-
-	Buffer b4(GL_ARRAY_BUFFER, sizeof(points), points);
-	b4.Bind();
-	VertexArrays v4(sizeof(float) * 3);
-	v4.DataOrder(0, 3, 0);
-	v4.UnBind();
-	b4.UnBind();
-	s4.UnBind();
-
 	ball.Bind();
-	Buffer bball(GL_ARRAY_BUFFER, sizeof(ballpoints), ballpoints);
-	bball.Bind();
-	VertexArrays vball(sizeof(float) * 2);
-	vball.DataOrder(0, 2, 0);
-	vball.UnBind();
-	bball.UnBind();
+	Buffer ballBuffer(GL_ARRAY_BUFFER, sizeof(ballpoints), ballpoints);
+	ballBuffer.Bind();
+	VertexArrays ballVA(sizeof(float) * 2);
+	ballVA.DataOrder(0, 2, 0);
+	ballVA.UnBind();
+	ballBuffer.UnBind();
 	ball.UnBind();
 
-
 	tail.reserve(30);
+
+	// used to move the snake
 	glm::mat4 move(1.0f);
 	glm::mat4 moved(1.0f);
 	int k = 0;
 
+	// to generater random coordinated for the food or ball
 	srand(time(0));
 	int bx = rand() % 7;
 	int by = rand() % 6;
 	float g = 1.0f,f = -1.0f;
 	int score = 0;
 
-	double time=0, deltatime=0, lasttime=0;
 
 	while (!glfwWindowShouldClose(window))
 	{
@@ -127,39 +133,45 @@ int main()
 	    float x = 0.1f;
 		float y = 0.1f;
 
-		s2.Bind();
+		// display the horizontal lines
+		layoutx.Bind();
 		for (int i = 0; i < 17; i++)
 		{
-			glUniform1f(glGetUniformLocation(s2.Get_Id(), "x"), x);
+			glUniform1f(glGetUniformLocation(layoutx.Get_Id(), "x"), x);
 			glDrawArrays(GL_LINES, 0, 2);
 			x = x + 0.1f;
         }
 
-		s3.Bind();
+		// display the vertical lines
+		layouty.Bind();
 		for (int i = 0; i < 17; i++)
 		{
-			glUniform1f(glGetUniformLocation(s3.Get_Id(), "y"), y);
+			glUniform1f(glGetUniformLocation(layouty.Get_Id(), "y"), y);
 			glDrawArrays(GL_LINES, 0, 2);
 			y = y + 0.1f;
 		}
 
+		// display the food or ball
 		ball.Bind();
-		vball.Bind();
+		ballVA.Bind();
 		ran = glm::translate(ran, glm::vec3(g * random[bx],f * random[by], 0.0f));
 		glUniformMatrix4fv(glGetUniformLocation(ball.Get_Id(), "ran"), 1, GL_FALSE, glm::value_ptr(ran));
 		glDrawArrays(GL_TRIANGLES, 0, 6);
 		ball.UnBind();
-		vball.UnBind();
+		ballVA.UnBind();
 
-		s4.Bind();
-		v4.Bind();
+		// display and move the snake in certain direction
+		snake.Bind();
+		snakeVA.Bind();
 		key_callback(window, Key, 0, GLFW_PRESS, 0);
 		
-		move = glm::translate(move, vec);
-		glUniform3f(glGetUniformLocation(s4.Get_Id(), "col"), 0.5, 0.5, 0.5);
-		glUniformMatrix4fv(glGetUniformLocation(s4.Get_Id(), "move"), 1, GL_FALSE, glm::value_ptr(move));
+		// displaying only the head of the snake with different color
+		move = glm::translate(move, head);
+		glUniform3f(glGetUniformLocation(snake.Get_Id(), "col"), 0.5, 0.5, 0.5);
+		glUniformMatrix4fv(glGetUniformLocation(snake.Get_Id(), "move"), 1, GL_FALSE, glm::value_ptr(move));
 		glDrawArrays(GL_TRIANGLES, 0, 6);
 
+		// checking for the colision of food with the head of the snake 
 		k = 0;
 		for (int i = 3; i < 6; i++)
 		{
@@ -167,8 +179,8 @@ int main()
 			glm::vec4 vep(0.0f, 0.0f, 0.0f, 1.0f);
 			glm::vec4 veb(0.0f, 0.0f, 0.0f, 1.0f);
 
-			vep.x = points[i][j];
-			vep.y = points[i][j + 1];
+			vep.x = snakePoints[i][j];
+			vep.y = snakePoints[i][j + 1];
 			vep.z = 0.0f;
 			veb.x = ballpoints[i][j];
 			veb.y = ballpoints[i][j + 1];
@@ -185,6 +197,8 @@ int main()
 			}
 		}
 		move = glm::mat4(1.0f);
+
+		// if collision occurs generate a random coordinate for the food or ball
 		if (k==3)
 		{
 			bx = rand() % 7;
@@ -196,8 +210,10 @@ int main()
 			score++;
 			flag = true;
 		}
+
+		// displaying the body of the snake
 		int size = tail.size() - 1;
-		glm::vec3 vecd = vec;
+		glm::vec3 vecd = head;
 		for (int i = 0; i < n; i++)
 		{
 			glm::mat4 moved(1.0f);
@@ -217,28 +233,33 @@ int main()
 			{
 				vecd.y += 0.1f;
 			}
-			if ((rou(vec.x) == rou(vecd.x)) && (rou(vec.y) == rou(vecd.y)) && (rou(vec.z) == rou(vecd.z)))
+			if ((rou(head.x) == rou(vecd.x)) && (rou(head.y) == rou(vecd.y)) && (rou(head.z) == rou(vecd.z)))
 			{
 				glfwSetWindowShouldClose(window, true);
 			}
-			glUniform3f(glGetUniformLocation(s4.Get_Id(), "col"), 0.74f, 0.83f, 0.25f);
+			glUniform3f(glGetUniformLocation(snake.Get_Id(), "col"), 0.74f, 0.83f, 0.25f);
 			moved = glm::translate(moved, vecd);
-			glUniformMatrix4fv(glGetUniformLocation(s4.Get_Id(), "move"), 1, GL_FALSE, glm::value_ptr(moved));
+			glUniformMatrix4fv(glGetUniformLocation(snake.Get_Id(), "move"), 1, GL_FALSE, glm::value_ptr(moved));
 			glDrawArrays(GL_TRIANGLES, 0, 6);
 			size--;
 		}
+
+		// if collison occurs increase the body of the snake
 		if (flag)
 		{
 			n++;
 		}
+
 		flag = false;
 		ran = glm::mat4(1.0f);
-		s2.UnBind();
-		s3.UnBind();
-		s4.UnBind();
-		v4.UnBind();
+		layoutx.UnBind();
+		layouty.UnBind();
+		snake.UnBind();
+		snakeVA.UnBind();
 		Sleep(200-5 *score);
-		if (rou(vec.x) < -0.3 || rou(vec.x) > 1.3 || rou(vec.y) > 0.7 || rou(vec.y) < -1.0)
+
+		// checking if the snake head is out of the screen or grid
+		if (rou(head.x) < -0.3f || rou(head.x) >= 1.3f || rou(head.y) > 0.6f || rou(head.y) < -0.9f)
 		{
 			glfwSetWindowShouldClose(window, true);
 			break;
@@ -259,6 +280,7 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 	glViewport(0, 0, width, height);
 }
 
+// not letting the user to give wrong input
 void callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
 	if ((key == GLFW_KEY_D || key == GLFW_KEY_A) && action == GLFW_PRESS && (Key == GLFW_KEY_W || Key == GLFW_KEY_S))
@@ -267,27 +289,28 @@ void callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 		Key = key;
 }
 
+// taking the input and changine the position of the head
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
 	if (key == GLFW_KEY_W && action == GLFW_PRESS)
 	{
 		tail.push_back(0);
-		vec.y += 0.1f;
+		head.y += 0.1f;
 	}
 	if (key == GLFW_KEY_A && action == GLFW_PRESS)
 	{
 		tail.push_back(3);
-		vec.x -= 0.1f;
+		head.x -= 0.1f;
 	}
 	if (key == GLFW_KEY_S && action == GLFW_PRESS)
 	{
 		tail.push_back(2);
-		vec.y -= 0.1f;
+		head.y -= 0.1f;
 	}
 	if (key == GLFW_KEY_D && action == GLFW_PRESS)
 	{
 		tail.push_back(1);
-		vec.x += 0.1f;
+		head.x += 0.1f;
 	}
 	if (key == GLFW_KEY_J && action == GLFW_PRESS)
 	{
@@ -296,6 +319,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	
 }
 
+// rounding the up the float upto 2 decimals
 float rou(float var)
 {
 	float value = (int)(var * 100 + .5);

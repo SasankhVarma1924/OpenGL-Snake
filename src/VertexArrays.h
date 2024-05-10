@@ -13,10 +13,10 @@ public:
 		Bind();
 		v_DataSize = datasize;
 	}
-	void DataOrder(unsigned int location,unsigned int number,unsigned int stride)
+	void DataOrder(unsigned int location,unsigned int vecType,unsigned int stride)
 	{
 		glEnableVertexAttribArray(location);
-		glVertexAttribPointer(location, number, GL_FLOAT, GL_FALSE, v_DataSize, (const void*) (stride * sizeof(float)));
+		glVertexAttribPointer(location, vecType, GL_FLOAT, GL_FALSE, v_DataSize, (const void*) (stride * sizeof(float)));
 	}
 	void Bind()
 	{

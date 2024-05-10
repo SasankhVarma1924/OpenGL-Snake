@@ -11,12 +11,12 @@ private:
 
 public:
 
-	Buffer(GLenum target,unsigned int size,const void * add)
+	Buffer(GLenum target,unsigned int size,const void * data)
 	{
 		b_Target = target;
 		glGenBuffers(1, &b_Id);
 		Bind();
-		glBufferData(b_Target, size, add , GL_STATIC_DRAW);
+		glBufferData(b_Target, size, data , GL_STATIC_DRAW);
 	}
 	void Bind()
 	{
